@@ -1,0 +1,9 @@
+/**
+ * Aevum — AI Core Platform
+ * Copyright (c) 2026 Aevum. All rights reserved.
+ * Licensed under the MIT License.
+ *
+ * File: <relative path>
+ * Purpose: <one line>
+ */
+
