@@ -20,7 +20,8 @@
     "@aevum/crypto": "workspace:*",
     "@aevum/db": "workspace:*",
     "@aevum/shared": "workspace:*",
-    "@aevum/storage": "workspace:*"
+    "@aevum/storage": "workspace:*",
+    "drizzle-orm": "^0.39.3"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",

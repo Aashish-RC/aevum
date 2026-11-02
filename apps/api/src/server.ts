@@ -80,6 +80,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     return reply.status(200).send({ status: 'ok' });
   });
 
+  // Auth routes
+  const { authRoutes } = await import('./routes/auth.js');
+  await app.register(authRoutes, { prefix: '/v1/auth' });
+
   return app;
 }
 

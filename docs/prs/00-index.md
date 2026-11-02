@@ -3,7 +3,7 @@
 | PR | Title | Status | Tests | Source |
 |---|---|---|---|---|
 | 13.0 | Repo skeleton + shared packages (db, crypto, storage, logger) | Completed | Smoke tests (5 passed) | — |
-| 13.1 | Email/password auth + password policy validator | Pending | T13.1, T13.2, T13.17-T13.24 | Better Auth merge |
+| 13.1 | Email/password auth + password policy validator | Completed | T13.1, T13.2, T13.17-T13.24, T13.40 (25 passed total) | Better Auth merge |
 | 13.2 | Session manager + JWT issuance + refresh rotation | Pending | T13.3, T13.15 | Better Auth merge |
 | 13.3 | OAuth providers — Google + Apple | Pending | T13.4, T13.5 | Better Auth merge |
 | 13.4 | OAuth providers — GitHub + GitLab + Microsoft | Pending | T13.6, T13.7, T13.8 | Better Auth merge |

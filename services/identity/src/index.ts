@@ -10,3 +10,6 @@
 export const IDENTITY_PILLAR_VERSION = '1.0.0';
 export const IDENTITY_PILLAR_ID = 13;
 export const IDENTITY_PILLAR_NAME = 'Identity/Profile';
+
+export * from './validators/password.js';
+export * from './services/auth-service.js';

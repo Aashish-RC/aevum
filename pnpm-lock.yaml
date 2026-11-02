@@ -23,6 +23,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@aevum/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@aevum/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -44,6 +47,9 @@ importers:
       fastify:
         specifier: ^5.2.1
         version: 5.12.7
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
@@ -60,6 +66,9 @@ importers:
       '@aevum/shared':
         specifier: workspace:*
         version: link:../shared
+      jose:
+        specifier: ^6.0.8
+        version: 6.2.14
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
@@ -161,6 +170,9 @@ importers:
       '@aevum/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      drizzle-orm:
+        specifier: ^0.39.3
+        version: 0.39.3(@types/pg@8.23.1)(pg@8.23.1)
     devDependencies:
       '@types/node':
         specifier: ^22.13.9
