@@ -23,6 +23,18 @@ export interface IAuthRepository {
   updateUserLastLogin(userId: string, lastLoginAt: Date): Promise<void>;
   createSession(data: SessionInsert): Promise<SessionSelect>;
   findSessionsByUserId(userId: string): Promise<SessionSelect[]>;
+  findSessionById(id: string): Promise<SessionSelect | null>;
+  findSessionByRefreshTokenHash(hash: string): Promise<SessionSelect | null>;
+  updateSession(
+    id: string,
+    patch: Partial<Omit<SessionInsert, 'id' | 'userId' | 'createdAt'>>,
+  ): Promise<SessionSelect>;
+  findSessionById(id: string): Promise<SessionSelect | null>;
+  findSessionByRefreshTokenHash(hash: string): Promise<SessionSelect | null>;
+  updateSession(
+    id: string,
+    patch: Partial<Omit<SessionInsert, 'id' | 'userId' | 'createdAt'>>
+  ): Promise<SessionSelect>;
   createAuditLog(data: AuditLogInsert): Promise<void>;
 }
 
@@ -71,6 +83,64 @@ export class DrizzleAuthRepository implements IAuthRepository {
     return this.db.query.session.findMany({
       where: eq(session.userId, userId),
     });
+  }
+
+  public async findSessionById(id: string): Promise<SessionSelect | null> {
+    const found = await this.db.query.session.findFirst({
+      where: eq(session.id, id),
+    });
+    return found || null;
+  }
+
+  public async findSessionByRefreshTokenHash(hash: string): Promise<SessionSelect | null> {
+    const found = await this.db.query.session.findFirst({
+      where: eq(session.refreshTokenHash, hash),
+    });
+    return found || null;
+  }
+
+  public async updateSession(
+    id: string,
+    patch: Partial<Omit<SessionInsert, 'id' | 'userId' | 'createdAt'>>,
+  ): Promise<SessionSelect> {
+    const [updated] = await this.db
+      .update(session)
+      .set(patch)
+      .where(eq(session.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error('Failed to update session');
+    }
+    return updated;
+  }
+
+  public async findSessionById(id: string): Promise<SessionSelect | null> {
+    const found = await this.db.query.session.findFirst({
+      where: eq(session.id, id),
+    });
+    return found || null;
+  }
+
+  public async findSessionByRefreshTokenHash(hash: string): Promise<SessionSelect | null> {
+    const found = await this.db.query.session.findFirst({
+      where: eq(session.refreshTokenHash, hash),
+    });
+    return found || null;
+  }
+
+  public async updateSession(
+    id: string,
+    patch: Partial<Omit<SessionInsert, 'id' | 'userId' | 'createdAt'>>
+  ): Promise<SessionSelect> {
+    const [updated] = await this.db
+      .update(session)
+      .set(patch)
+      .where(eq(session.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error('Failed to update session');
+    }
+    return updated;
   }
 
   public async createAuditLog(data: AuditLogInsert): Promise<void> {

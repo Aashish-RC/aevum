@@ -8,84 +8,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type {
-  AuditLogInsert,
-  IAuthRepository,
-  SessionInsert,
-  SessionSelect,
-  UserInsert,
-  UserSelect,
-} from './auth-repository.js';
+import { InMemoryAuthRepository } from '../test/in-memory-auth-repository.js';
 import { AuthService } from './auth-service.js';
-
-class InMemoryAuthRepository implements IAuthRepository {
-  public users: UserSelect[] = [];
-  public sessions: SessionSelect[] = [];
-  public auditLogs: AuditLogInsert[] = [];
-
-  public async findUserByEmail(email: string): Promise<UserSelect | null> {
-    const found = this.users.find((u) => u.email === email);
-    return found || null;
-  }
-
-  public async findUserById(id: string): Promise<UserSelect | null> {
-    const found = this.users.find((u) => u.id === id);
-    return found || null;
-  }
-
-  public async createUser(data: UserInsert): Promise<UserSelect> {
-    const created: UserSelect = {
-      id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      email: data.email,
-      displayName: data.displayName,
-      passwordHash: data.passwordHash || null,
-      emailVerified: data.emailVerified ?? false,
-      avatarUrl: data.avatarUrl || null,
-      locale: data.locale || 'en',
-      timezone: data.timezone || 'UTC',
-      dekWrapped: data.dekWrapped || null,
-      dekVersion: data.dekVersion || 1,
-      dekCreatedAt: data.dekCreatedAt || new Date(),
-      createdAt: data.createdAt || new Date(),
-      lastLoginAt: data.lastLoginAt || new Date(),
-      status: data.status || 'active',
-    };
-    this.users.push(created);
-    return created;
-  }
-
-  public async updateUserLastLogin(userId: string, lastLoginAt: Date): Promise<void> {
-    const user = this.users.find((u) => u.id === userId);
-    if (user) {
-      user.lastLoginAt = lastLoginAt;
-    }
-  }
-
-  public async createSession(data: SessionInsert): Promise<SessionSelect> {
-    const session: SessionSelect = {
-      id: `ses_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      userId: data.userId,
-      refreshTokenHash: data.refreshTokenHash,
-      deviceId: data.deviceId || null,
-      userAgent: data.userAgent || null,
-      ip: data.ip || null,
-      createdAt: new Date(),
-      lastUsedAt: new Date(),
-      expiresAt: data.expiresAt,
-      revoked: data.revoked ?? false,
-    };
-    this.sessions.push(session);
-    return session;
-  }
-
-  public async findSessionsByUserId(userId: string): Promise<SessionSelect[]> {
-    return this.sessions.filter((s) => s.userId === userId);
-  }
-
-  public async createAuditLog(data: AuditLogInsert): Promise<void> {
-    this.auditLogs.push(data);
-  }
-}
 
 describe('AuthService — Email/Password', () => {
   // T13.1
