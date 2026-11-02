@@ -4,16 +4,20 @@
  * Licensed under the MIT License.
  *
  * File: services/identity/src/services/auth-repository.ts
- * Purpose: Database repository abstraction for authentication operations
+ * Purpose: Database repository abstraction for authentication, session, OAuth, and consent operations
  */
 
-import { type AevumDatabase, auditLog, session, user } from '@aevum/db';
-import { eq } from 'drizzle-orm';
+import { type AevumDatabase, auditLog, consent, oauthLink, session, user } from '@aevum/db';
+import { and, eq } from 'drizzle-orm';
 
 export type UserInsert = typeof user.$inferInsert;
 export type UserSelect = typeof user.$inferSelect;
 export type SessionInsert = typeof session.$inferInsert;
 export type SessionSelect = typeof session.$inferSelect;
+export type OAuthLinkInsert = typeof oauthLink.$inferInsert;
+export type OAuthLinkSelect = typeof oauthLink.$inferSelect;
+export type ConsentInsert = typeof consent.$inferInsert;
+export type ConsentSelect = typeof consent.$inferSelect;
 export type AuditLogInsert = typeof auditLog.$inferInsert;
 
 export interface IAuthRepository {
@@ -21,6 +25,8 @@ export interface IAuthRepository {
   findUserById(id: string): Promise<UserSelect | null>;
   createUser(data: UserInsert): Promise<UserSelect>;
   updateUserLastLogin(userId: string, lastLoginAt: Date): Promise<void>;
+  updateUserDek(userId: string, dekWrapped: Buffer): Promise<void>;
+
   createSession(data: SessionInsert): Promise<SessionSelect>;
   findSessionsByUserId(userId: string): Promise<SessionSelect[]>;
   findSessionById(id: string): Promise<SessionSelect | null>;
@@ -29,12 +35,16 @@ export interface IAuthRepository {
     id: string,
     patch: Partial<Omit<SessionInsert, 'id' | 'userId' | 'createdAt'>>,
   ): Promise<SessionSelect>;
-  findSessionById(id: string): Promise<SessionSelect | null>;
-  findSessionByRefreshTokenHash(hash: string): Promise<SessionSelect | null>;
-  updateSession(
-    id: string,
-    patch: Partial<Omit<SessionInsert, 'id' | 'userId' | 'createdAt'>>
-  ): Promise<SessionSelect>;
+
+  findOAuthLink(provider: string, providerUserId: string): Promise<OAuthLinkSelect | null>;
+  findOAuthLinkByUserAndProvider(userId: string, provider: string): Promise<OAuthLinkSelect | null>;
+  saveOAuthLink(data: OAuthLinkInsert): Promise<OAuthLinkSelect>;
+  deleteOAuthLink(userId: string, provider: string): Promise<void>;
+
+  recordConsent(data: ConsentInsert): Promise<ConsentSelect>;
+  revokeConsent(userId: string, provider: string, reason?: string): Promise<void>;
+  findConsents(userId: string, provider: string): Promise<ConsentSelect[]>;
+
   createAuditLog(data: AuditLogInsert): Promise<void>;
 }
 
@@ -69,6 +79,13 @@ export class DrizzleAuthRepository implements IAuthRepository {
 
   public async updateUserLastLogin(userId: string, lastLoginAt: Date): Promise<void> {
     await this.db.update(user).set({ lastLoginAt }).where(eq(user.id, userId));
+  }
+
+  public async updateUserDek(userId: string, dekWrapped: Buffer): Promise<void> {
+    await this.db
+      .update(user)
+      .set({ dekWrapped, dekCreatedAt: new Date(), dekVersion: 1 })
+      .where(eq(user.id, userId));
   }
 
   public async createSession(data: SessionInsert): Promise<SessionSelect> {
@@ -114,33 +131,77 @@ export class DrizzleAuthRepository implements IAuthRepository {
     return updated;
   }
 
-  public async findSessionById(id: string): Promise<SessionSelect | null> {
-    const found = await this.db.query.session.findFirst({
-      where: eq(session.id, id),
+  public async findOAuthLink(
+    provider: string,
+    providerUserId: string,
+  ): Promise<OAuthLinkSelect | null> {
+    const found = await this.db.query.oauthLink.findFirst({
+      where: and(eq(oauthLink.provider, provider), eq(oauthLink.providerUserId, providerUserId)),
     });
     return found || null;
   }
 
-  public async findSessionByRefreshTokenHash(hash: string): Promise<SessionSelect | null> {
-    const found = await this.db.query.session.findFirst({
-      where: eq(session.refreshTokenHash, hash),
+  public async findOAuthLinkByUserAndProvider(
+    userId: string,
+    provider: string,
+  ): Promise<OAuthLinkSelect | null> {
+    const found = await this.db.query.oauthLink.findFirst({
+      where: and(eq(oauthLink.userId, userId), eq(oauthLink.provider, provider)),
     });
     return found || null;
   }
 
-  public async updateSession(
-    id: string,
-    patch: Partial<Omit<SessionInsert, 'id' | 'userId' | 'createdAt'>>
-  ): Promise<SessionSelect> {
-    const [updated] = await this.db
-      .update(session)
-      .set(patch)
-      .where(eq(session.id, id))
-      .returning();
-    if (!updated) {
-      throw new Error('Failed to update session');
+  public async saveOAuthLink(data: OAuthLinkInsert): Promise<OAuthLinkSelect> {
+    const existing = await this.findOAuthLink(data.provider, data.providerUserId);
+    if (existing) {
+      const [updated] = await this.db
+        .update(oauthLink)
+        .set({
+          accessTokenEncrypted: data.accessTokenEncrypted,
+          refreshTokenEncrypted: data.refreshTokenEncrypted,
+          tokenExpiresAt: data.tokenExpiresAt,
+          scopesGranted: data.scopesGranted,
+          scopesRequested: data.scopesRequested,
+          lastRefreshedAt: new Date(),
+        })
+        .where(eq(oauthLink.id, existing.id))
+        .returning();
+      if (!updated) throw new Error('Failed to update OAuth link');
+      return updated;
     }
-    return updated;
+
+    const [created] = await this.db.insert(oauthLink).values(data).returning();
+    if (!created) throw new Error('Failed to insert OAuth link');
+    return created;
+  }
+
+  public async deleteOAuthLink(userId: string, provider: string): Promise<void> {
+    await this.db
+      .delete(oauthLink)
+      .where(and(eq(oauthLink.userId, userId), eq(oauthLink.provider, provider)));
+  }
+
+  public async recordConsent(data: ConsentInsert): Promise<ConsentSelect> {
+    const [created] = await this.db.insert(consent).values(data).returning();
+    if (!created) throw new Error('Failed to record consent');
+    return created;
+  }
+
+  public async revokeConsent(userId: string, provider: string, reason?: string): Promise<void> {
+    await this.db
+      .update(consent)
+      .set({
+        status: 'revoked',
+        revokedAt: new Date(),
+        reason: reason || 'User requested revocation',
+      })
+      .where(and(eq(consent.userId, userId), eq(consent.provider, provider)));
+  }
+
+  public async findConsents(userId: string, provider: string): Promise<ConsentSelect[]> {
+    return this.db.query.consent.findMany({
+      where: and(eq(consent.userId, userId), eq(consent.provider, provider)),
+    });
   }
 
   public async createAuditLog(data: AuditLogInsert): Promise<void> {

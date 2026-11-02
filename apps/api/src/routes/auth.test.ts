@@ -117,9 +117,11 @@ describe('Auth HTTP Endpoints (/v1/auth)', () => {
   });
 
   it('POST /v1/auth/login returns 401 on invalid credentials', async () => {
-    const loginMock = vi.spyOn(AuthService.prototype, 'login').mockRejectedValue(
-      new AuthenticationError('Invalid email or password', 'INVALID_CREDENTIALS')
-    );
+    const loginMock = vi
+      .spyOn(AuthService.prototype, 'login')
+      .mockRejectedValue(
+        new AuthenticationError('Invalid email or password', 'INVALID_CREDENTIALS'),
+      );
 
     const app = await buildServer();
     const response = await app.inject({
@@ -289,7 +291,7 @@ describe('Auth HTTP Endpoints (/v1/auth)', () => {
         device_id: 'phone',
         session_id: 'ses_1',
       },
-      config.AEVUM_JWT_SECRET
+      config.AEVUM_JWT_SECRET,
     );
 
     const app = await buildServer();
@@ -323,7 +325,7 @@ describe('Auth HTTP Endpoints (/v1/auth)', () => {
         device_id: 'phone',
         session_id: 'ses_1',
       },
-      config.AEVUM_JWT_SECRET
+      config.AEVUM_JWT_SECRET,
     );
 
     const app = await buildServer();

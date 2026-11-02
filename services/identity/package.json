@@ -21,7 +21,8 @@
     "@aevum/db": "workspace:*",
     "@aevum/shared": "workspace:*",
     "@aevum/storage": "workspace:*",
-    "drizzle-orm": "^0.39.3"
+    "drizzle-orm": "^0.39.3",
+    "jose": "^6.0.8"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",

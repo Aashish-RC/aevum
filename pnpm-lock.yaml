@@ -173,6 +173,9 @@ importers:
       drizzle-orm:
         specifier: ^0.39.3
         version: 0.39.3(@types/pg@8.23.1)(pg@8.23.1)
+      jose:
+        specifier: ^6.0.8
+        version: 6.2.14
     devDependencies:
       '@types/node':
         specifier: ^22.13.9

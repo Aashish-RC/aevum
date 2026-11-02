@@ -84,6 +84,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   const { authRoutes } = await import('./routes/auth.js');
   await app.register(authRoutes, { prefix: '/v1/auth' });
 
+  // OAuth routes
+  const { oauthRoutes } = await import('./routes/oauth.js');
+  await app.register(oauthRoutes, { prefix: '/v1/auth/oauth' });
+
   return app;
 }
 

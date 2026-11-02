@@ -12,6 +12,10 @@ export const IDENTITY_PILLAR_ID = 13;
 export const IDENTITY_PILLAR_NAME = 'Identity/Profile';
 
 export * from './validators/password.js';
+export * from './providers/oauth-provider.js';
+export * from './providers/google-provider.js';
+export * from './providers/apple-provider.js';
 export * from './services/auth-repository.js';
 export * from './services/auth-service.js';
 export * from './services/session-service.js';
+export * from './services/oauth-service.js';

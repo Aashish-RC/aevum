@@ -9,7 +9,11 @@
 
 import type {
   AuditLogInsert,
+  ConsentInsert,
+  ConsentSelect,
   IAuthRepository,
+  OAuthLinkInsert,
+  OAuthLinkSelect,
   SessionInsert,
   SessionSelect,
   UserInsert,
@@ -19,6 +23,8 @@ import type {
 export class InMemoryAuthRepository implements IAuthRepository {
   public users: UserSelect[] = [];
   public sessions: SessionSelect[] = [];
+  public oauthLinks: OAuthLinkSelect[] = [];
+  public consents: ConsentSelect[] = [];
   public auditLogs: AuditLogInsert[] = [];
 
   public async findUserByEmail(email: string): Promise<UserSelect | null> {
@@ -54,6 +60,15 @@ export class InMemoryAuthRepository implements IAuthRepository {
     const user = this.users.find((u) => u.id === userId);
     if (user) {
       user.lastLoginAt = lastLoginAt;
+    }
+  }
+
+  public async updateUserDek(userId: string, dekWrapped: Buffer): Promise<void> {
+    const user = this.users.find((u) => u.id === userId);
+    if (user) {
+      user.dekWrapped = dekWrapped;
+      user.dekCreatedAt = new Date();
+      user.dekVersion = 1;
     }
   }
 
@@ -96,6 +111,99 @@ export class InMemoryAuthRepository implements IAuthRepository {
     }
     Object.assign(found, patch);
     return found;
+  }
+
+  public async findOAuthLink(
+    provider: string,
+    providerUserId: string,
+  ): Promise<OAuthLinkSelect | null> {
+    return (
+      this.oauthLinks.find((l) => l.provider === provider && l.providerUserId === providerUserId) ||
+      null
+    );
+  }
+
+  public async findOAuthLinkByUserAndProvider(
+    userId: string,
+    provider: string,
+  ): Promise<OAuthLinkSelect | null> {
+    return this.oauthLinks.find((l) => l.userId === userId && l.provider === provider) || null;
+  }
+
+  public async saveOAuthLink(data: OAuthLinkInsert): Promise<OAuthLinkSelect> {
+    const existingIndex = this.oauthLinks.findIndex(
+      (l) => l.provider === data.provider && l.providerUserId === data.providerUserId,
+    );
+
+    const record: OAuthLinkSelect = {
+      id: `oal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      userId: data.userId,
+      provider: data.provider,
+      providerUserId: data.providerUserId,
+      accessTokenEncrypted: data.accessTokenEncrypted || null,
+      refreshTokenEncrypted: data.refreshTokenEncrypted || null,
+      tokenExpiresAt: data.tokenExpiresAt || null,
+      scopesGranted: data.scopesGranted || [],
+      scopesRequested: data.scopesRequested || [],
+      linkedAt: new Date(),
+      lastRefreshedAt: new Date(),
+    };
+
+    if (existingIndex >= 0) {
+      const existing = this.oauthLinks[existingIndex];
+      if (!existing) {
+        this.oauthLinks.push(record);
+        return record;
+      }
+      this.oauthLinks[existingIndex] = {
+        ...existing,
+        accessTokenEncrypted: data.accessTokenEncrypted || null,
+        refreshTokenEncrypted: data.refreshTokenEncrypted || null,
+        tokenExpiresAt: data.tokenExpiresAt || null,
+        scopesGranted: data.scopesGranted || existing.scopesGranted,
+        scopesRequested: data.scopesRequested || existing.scopesRequested,
+        lastRefreshedAt: new Date(),
+      };
+      return existing;
+    }
+
+    this.oauthLinks.push(record);
+    return record;
+  }
+
+  public async deleteOAuthLink(userId: string, provider: string): Promise<void> {
+    this.oauthLinks = this.oauthLinks.filter(
+      (l) => !(l.userId === userId && l.provider === provider),
+    );
+  }
+
+  public async recordConsent(data: ConsentInsert): Promise<ConsentSelect> {
+    const record: ConsentSelect = {
+      id: `cst_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      userId: data.userId,
+      provider: data.provider,
+      scope: data.scope,
+      status: data.status,
+      grantedAt: new Date(),
+      revokedAt: null,
+      reason: data.reason || null,
+    };
+    this.consents.push(record);
+    return record;
+  }
+
+  public async revokeConsent(userId: string, provider: string, reason?: string): Promise<void> {
+    for (const c of this.consents) {
+      if (c.userId === userId && c.provider === provider) {
+        c.status = 'revoked';
+        c.revokedAt = new Date();
+        c.reason = reason || null;
+      }
+    }
+  }
+
+  public async findConsents(userId: string, provider: string): Promise<ConsentSelect[]> {
+    return this.consents.filter((c) => c.userId === userId && c.provider === provider);
   }
 
   public async createAuditLog(data: AuditLogInsert): Promise<void> {
